@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+
+# Build outputs
+dist/
+build/
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma generated
+/lib/generated/prisma
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# v0 runtime files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+
+# Logs
+*.log
+npm-debug.log*
+*.txt
+
+# Misc temp/debug scripts at root
+check_*.js
+dump_db.js
+fix_*.js
+list_dbs.js
+manual_seed.js
+test-api.js
+test_keys.js
+db_dump.json
+docker-compose.yml
+prisma.config.ts.bak
+tmp/
+seed_error*.txt
+frontend_error*.txt
+npx_out.txt
+dev_error*.txt
+dev_log.txt
+
+# Backend local uploads (use Cloudinary in production)
+backend/uploads/
