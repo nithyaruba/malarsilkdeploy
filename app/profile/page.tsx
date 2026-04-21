@@ -69,13 +69,16 @@ export default function ProfilePage() {
                id: profileData.data.id || profileData.data._id
              } as any)
            }
-        }
 
-        // Fetch orders
-        const ordersRes = await fetch(`${CONFIG.API.BASE_URL}/api/orders/myorders/${profileData.data.id || profileData.data._id}`)
-        const ordersData = await ordersRes.json()
-        if (ordersData.success) {
-          setOrders(ordersData.data.map((o: any) => ({ ...o, id: o.id || o._id })))
+          // Fetch orders using the user ID
+          const userId = profileData.data.id || profileData.data._id || user?.id
+          if (userId) {
+            const ordersRes = await fetch(`${CONFIG.API.BASE_URL}/api/orders/myorders/${userId}`)
+            const ordersData = await ordersRes.json()
+            if (ordersData.success) {
+              setOrders(ordersData.data.map((o: any) => ({ ...o, id: o.id || o._id })))
+            }
+          }
         }
       } catch (error) {
         console.error("Error fetching profile data:", error)
