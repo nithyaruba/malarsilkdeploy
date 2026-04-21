@@ -73,6 +73,16 @@ const autoMigrate = async () => {
             END $$;
         `);
 
+        // Drop NOT NULL constraint on email column (it's optional for orders)
+        await client.query(`
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'email' AND is_nullable = 'NO') THEN
+                    ALTER TABLE orders ALTER COLUMN email DROP NOT NULL;
+                END IF;
+            END $$;
+        `);
+
         // Create order_items table if not exists
         await client.query(`
             CREATE TABLE IF NOT EXISTS order_items (

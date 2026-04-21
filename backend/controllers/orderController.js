@@ -6,6 +6,7 @@ const createOrder = async (req, res) => {
     try {
         const {
             user_id,
+            email,
             orderItems,
             shippingAddress,
             paymentMethod,
@@ -17,8 +18,8 @@ const createOrder = async (req, res) => {
         }
 
         const result = await pool.query(
-            'INSERT INTO orders (user_id, shipping_address, payment_method, total_price) VALUES ($1, $2, $3, $4) RETURNING *, total_price AS "totalPrice", created_at AS "createdAt", shipping_address AS "shippingAddress", payment_method AS "paymentMethod"',
-            [user_id || null, JSON.stringify(shippingAddress), paymentMethod, totalPrice]
+            'INSERT INTO orders (user_id, email, shipping_address, payment_method, total_price) VALUES ($1, $2, $3, $4, $5) RETURNING *, total_price AS "totalPrice", created_at AS "createdAt", shipping_address AS "shippingAddress", payment_method AS "paymentMethod"',
+            [user_id || null, email || null, JSON.stringify(shippingAddress), paymentMethod, totalPrice]
         );
         
         const order = result.rows[0];
