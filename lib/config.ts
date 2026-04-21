@@ -3,7 +3,7 @@
  * Centralized here to ensure consistency and facilitate environment-specific deployments.
  */
 
-const DEFAULT_API_HOST = 'https://malarsilks-1.onrender.com';
+const DEFAULT_API_HOST = 'https://malarsilkdeploy-1.onrender.com';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_HOST;
 
 export const CONFIG = {
