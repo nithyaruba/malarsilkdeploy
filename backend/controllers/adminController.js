@@ -54,6 +54,18 @@ const seedAdmin = async (req, res) => {
                 password VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                phone VARCHAR(20),
+                address TEXT,
+                city VARCHAR(100),
+                pincode VARCHAR(10),
+                role VARCHAR(10) DEFAULT 'user',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
             CREATE TABLE IF NOT EXISTS gallery_entries (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
@@ -75,9 +87,23 @@ const seedAdmin = async (req, res) => {
             );
             CREATE TABLE IF NOT EXISTS orders (
                 id SERIAL PRIMARY KEY,
-                email VARCHAR(255) NOT NULL,
+                user_id INTEGER REFERENCES users(id),
+                email VARCHAR(255),
+                shipping_address TEXT,
+                payment_method VARCHAR(50),
                 total_price FLOAT NOT NULL,
                 status VARCHAR(50) DEFAULT 'Pending',
+                delivered_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS order_items (
+                id SERIAL PRIMARY KEY,
+                order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+                product_id INTEGER,
+                name VARCHAR(255) NOT NULL,
+                qty INTEGER NOT NULL DEFAULT 1,
+                image TEXT,
+                price FLOAT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS posts (
