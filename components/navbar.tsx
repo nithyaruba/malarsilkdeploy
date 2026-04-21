@@ -178,7 +178,7 @@ export function Navbar() {
                       <User className="w-4 h-4" /> My Profile
                     </Link>
                     <Link
-                      href="/orders"
+                      href="/profile"
                       onClick={() => setIsUserMenuOpen(false)}
                       className="flex items-center gap-3 px-3 py-2.5 hover:bg-red-50 rounded-xl text-sm font-semibold text-gray-700 hover:text-red-700 transition-colors"
                     >
