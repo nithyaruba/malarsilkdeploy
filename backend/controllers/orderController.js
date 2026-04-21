@@ -17,18 +17,24 @@ const createOrder = async (req, res) => {
             return res.status(400).json({ message: 'No order items' });
         }
 
+        const parsedUserId = parseInt(user_id, 10);
+        const finalUserId = isNaN(parsedUserId) ? null : parsedUserId;
+
         const result = await pool.query(
             'INSERT INTO orders (user_id, email, shipping_address, payment_method, total_price) VALUES ($1, $2, $3, $4, $5) RETURNING *, total_price AS "totalPrice", created_at AS "createdAt", shipping_address AS "shippingAddress", payment_method AS "paymentMethod"',
-            [user_id || null, email || null, JSON.stringify(shippingAddress), paymentMethod, totalPrice]
+            [finalUserId, email || null, JSON.stringify(shippingAddress), paymentMethod, totalPrice]
         );
         
         const order = result.rows[0];
         
         // Insert order items
         for (const item of orderItems) {
+            const parsedProductId = parseInt(item.product_id, 10);
+            const finalProductId = isNaN(parsedProductId) ? null : parsedProductId;
+
             await pool.query(
                 'INSERT INTO order_items (order_id, product_id, name, qty, image, price) VALUES ($1, $2, $3, $4, $5, $6)',
-                [order.id, item.product_id || null, item.name, item.qty, item.image, item.price]
+                [order.id, finalProductId, item.name, item.qty, item.image, item.price]
             );
         }
 
@@ -95,6 +101,11 @@ const getOrders = async (req, res) => {
 // @route   GET /api/orders/:id
 const getOrderById = async (req, res) => {
     try {
+        const parsedOrderId = parseInt(req.params.id, 10);
+        if (isNaN(parsedOrderId)) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
         const result = await pool.query(`
             SELECT o.*, 
                    o.total_price AS "totalPrice", 
@@ -102,23 +113,30 @@ const getOrderById = async (req, res) => {
                    o.shipping_address AS "shippingAddress",
                    o.payment_method AS "paymentMethod",
                    o.delivered_at AS "deliveredAt",
-                   u.name as user_name, u.email as user_email 
-            FROM orders o 
-            LEFT JOIN users u ON o.user_id = u.id 
+                   u.name as user_name, u.email as user_email
+            FROM orders o
+            LEFT JOIN users u ON o.user_id = u.id
             WHERE o.id = $1
-        `, [req.params.id]);
+        `, [parsedOrderId]);
 
         if (result.rowCount === 0) {
-            return res.status(404).json({ message: 'Order not found' });
+            return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
         const order = result.rows[0];
         const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [order.id]);
 
+        // Parse shipping address if it's a string
+        let shippingAddress = order.shippingAddress;
+        if (typeof shippingAddress === 'string') {
+            try { shippingAddress = JSON.parse(shippingAddress); } catch (e) {}
+        }
+
         res.status(200).json({
             success: true,
             data: {
                 ...order,
+                shippingAddress,
                 user: { name: order.user_name, email: order.user_email },
                 orderItems: itemsResult.rows
             }
@@ -131,25 +149,32 @@ const getOrderById = async (req, res) => {
     }
 };
 
-// @desc    Update order status (Admin)
+// @desc    Update order status
 // @route   PUT /api/orders/:id/status
 const updateOrderStatus = async (req, res) => {
     try {
         const { status } = req.body;
-        let query = 'UPDATE orders SET status = $1';
-        let values = [status];
-        
-        if (status === 'Delivered') {
-            query += ', delivered_at = NOW()';
+        const parsedOrderId = parseInt(req.params.id, 10);
+        if (isNaN(parsedOrderId)) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
         }
         
-        query += ' WHERE id = $2 RETURNING *';
-        values.push(req.params.id);
+        const deliveredAt = status === 'Delivered' ? new Date() : null;
+        const isPaid = status === 'Delivered' ? true : undefined; // Don't change is_paid unless delivered
+
+        let query, values;
+        if (status === 'Delivered') {
+            query = 'UPDATE orders SET status = $1, delivered_at = $2, is_paid = $3 WHERE id = $4 RETURNING *';
+            values = [status, deliveredAt, isPaid, parsedOrderId];
+        } else {
+            query = 'UPDATE orders SET status = $1 WHERE id = $2 RETURNING *';
+            values = [status, parsedOrderId];
+        }
 
         const result = await pool.query(query, values);
 
         if (result.rowCount === 0) {
-            return res.status(404).json({ message: 'Order not found' });
+            return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
         res.status(200).json({
@@ -168,6 +193,12 @@ const updateOrderStatus = async (req, res) => {
 // @route   GET /api/orders/myorders/:userId
 const getMyOrders = async (req, res) => {
     try {
+        const parsedUserId = parseInt(req.params.userId, 10);
+        if (isNaN(parsedUserId)) {
+            // If the userId is an old MongoDB string, they won't have any PostgreSQL orders anyway
+            return res.status(200).json({ success: true, data: [] });
+        }
+
         const result = await pool.query(`
             SELECT *, 
                    total_price AS "totalPrice", 
@@ -177,7 +208,7 @@ const getMyOrders = async (req, res) => {
             FROM orders 
             WHERE user_id = $1 
             ORDER BY created_at DESC
-        `, [req.params.userId]);
+        `, [parsedUserId]);
         
         const orders = [];
         for (const order of result.rows) {
