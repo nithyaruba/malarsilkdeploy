@@ -12,6 +12,7 @@ out/
 .env.test.local
 .env.production.local
 backend/.env
+prisma/.env
 
 # Build outputs
 dist/
@@ -59,3 +60,4 @@ dev_log.txt
 
 # Backend local uploads (use Cloudinary in production)
 backend/uploads/
+.vercel
