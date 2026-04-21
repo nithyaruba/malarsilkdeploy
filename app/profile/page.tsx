@@ -71,7 +71,7 @@ export default function ProfilePage() {
            }
 
           // Fetch orders using the user ID
-          const userId = profileData.data.id || profileData.data._id || user?.id
+          const userId = profileData.data.id || profileData.data._id || user?.id || (user as any)?._id
           if (userId) {
             const ordersRes = await fetch(`${CONFIG.API.BASE_URL}/api/orders/myorders/${userId}`)
             const ordersData = await ordersRes.json()
