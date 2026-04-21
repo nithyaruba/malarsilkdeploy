@@ -63,16 +63,16 @@ export default function ProfilePage() {
           })
           
           // Add ID to user if missing (for the put request)
-          if (!user?.id && profileData.data._id) {
+          if (!user?.id && (profileData.data.id || profileData.data._id)) {
              login({
                ...user!,
-               id: profileData.data._id
+               id: profileData.data.id || profileData.data._id
              } as any)
-          }
+           }
         }
 
         // Fetch orders
-        const ordersRes = await fetch(`${CONFIG.API.BASE_URL}/api/orders/myorders/${profileData.data._id}`)
+        const ordersRes = await fetch(`${CONFIG.API.BASE_URL}/api/orders/myorders/${profileData.data.id || profileData.data._id}`)
         const ordersData = await ordersRes.json()
         if (ordersData.success) {
           setOrders(ordersData.data.map((o: any) => ({ ...o, id: o.id || o._id })))
@@ -301,7 +301,7 @@ export default function ProfilePage() {
                             </div>
                             <div className="flex-1">
                               <h4 className="font-semibold text-slate-900 group-hover:text-primary transition-colors line-clamp-1">{item.name}</h4>
-                              <p className="text-sm text-slate-500 font-medium">Qty: {item.quantity} × ₹{item.price.toLocaleString()}</p>
+                              <p className="text-sm text-slate-500 font-medium">Qty: {item.qty || item.quantity} × ₹{item.price.toLocaleString()}</p>
                             </div>
                           </div>
                         ))}

@@ -2,8 +2,155 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { connectDB } = require('./config/db');
-connectDB();
+const { connectDB, pool } = require('./config/db');
+
+// Auto-migrate: ensure all required tables and columns exist
+const autoMigrate = async () => {
+    try {
+        const client = await pool.connect();
+        console.log('Running auto-migration...');
+
+        // Create users table if not exists
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                phone VARCHAR(50),
+                address TEXT,
+                city VARCHAR(255),
+                pincode VARCHAR(20),
+                role VARCHAR(20) DEFAULT 'user',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create orders table if not exists
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS orders (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                email VARCHAR(255),
+                shipping_address TEXT,
+                payment_method VARCHAR(100) DEFAULT 'COD',
+                total_price FLOAT DEFAULT 0,
+                is_paid BOOLEAN DEFAULT FALSE,
+                paid_at TIMESTAMP,
+                status VARCHAR(50) DEFAULT 'Pending',
+                delivered_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Add missing columns to orders table (safe - only adds if not exists)
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'user_id') THEN
+                    ALTER TABLE orders ADD COLUMN user_id INTEGER;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'shipping_address') THEN
+                    ALTER TABLE orders ADD COLUMN shipping_address TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'payment_method') THEN
+                    ALTER TABLE orders ADD COLUMN payment_method VARCHAR(100);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'delivered_at') THEN
+                    ALTER TABLE orders ADD COLUMN delivered_at TIMESTAMP;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'total_price') THEN
+                    ALTER TABLE orders ADD COLUMN total_price FLOAT DEFAULT 0;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'status') THEN
+                    ALTER TABLE orders ADD COLUMN status VARCHAR(50) DEFAULT 'Pending';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'is_paid') THEN
+                    ALTER TABLE orders ADD COLUMN is_paid BOOLEAN DEFAULT FALSE;
+                END IF;
+            END $$;
+        `);
+
+        // Create order_items table if not exists
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS order_items (
+                id SERIAL PRIMARY KEY,
+                order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+                product_id INTEGER,
+                name VARCHAR(255) NOT NULL,
+                qty INTEGER NOT NULL,
+                image TEXT NOT NULL,
+                price FLOAT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create products table if not exists
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS products (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                price FLOAT NOT NULL,
+                category VARCHAR(100),
+                image TEXT,
+                images TEXT[],
+                rating FLOAT DEFAULT 0,
+                num_reviews INTEGER DEFAULT 0,
+                in_stock BOOLEAN DEFAULT TRUE,
+                count_in_stock INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create admins table if not exists
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS admins (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create gallery_entries table if not exists
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS gallery_entries (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255),
+                description TEXT,
+                image_url TEXT NOT NULL,
+                category VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create posts table if not exists
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS posts (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                content TEXT,
+                image TEXT,
+                author VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        console.log('Auto-migration complete.');
+        client.release();
+    } catch (error) {
+        console.error('Auto-migration error:', error.message);
+        // Don't crash the server if migration fails
+    }
+};
+
+// Initialize DB
+connectDB().then(() => autoMigrate());
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
