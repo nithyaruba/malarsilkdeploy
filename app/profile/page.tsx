@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useApp } from '@/lib/app-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,11 +22,13 @@ interface Order {
   orderItems: any[]
 }
 
-export default function ProfilePage() {
-  const { user, isLoggedIn, login } = useApp()
+function ProfileContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { user, login, isLoggedIn } = useApp()
   const { toast } = useToast()
   
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile')
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [orders, setOrders] = useState<Order[]>([])
@@ -158,7 +160,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <Tabs defaultValue="profile" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-white p-1 rounded-xl border shadow-sm">
             <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <User className="w-4 h-4 mr-2" /> Profile Info
@@ -318,5 +320,13 @@ export default function ProfilePage() {
         </Tabs>
       </div>
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>}>
+      <ProfileContent />
+    </Suspense>
   )
 }
